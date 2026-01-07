@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -41,36 +42,30 @@
     .hint { margin-top: 0.5rem; color: #60a5fa; }
     footer { margin-top: 1rem; color: #64748b; font-size: 0.85rem; }
 
-    /* === Modal (pop-up) styles === */
-    .modal-backdrop {
-      position: fixed; inset: 0;
-      background: rgba(2,6,23,0.65);
-      display: none; /* hidden by default */
-      align-items: center; justify-content: center;
-      z-index: 1000;
-    }
-    .modal {
+    /* === Dialog styles === */
+    dialog {
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1.25rem;
+      background: #111827;
+      color: #e2e8f0;
       width: min(92vw, 560px);
-      background: #111827; border: 1px solid #1f2937; border-radius: 12px;
       box-shadow: 0 25px 60px rgba(0,0,0,0.45);
-      padding: 1.25rem; color: #e2e8f0;
     }
-    .modal header {
+    dialog::backdrop {
+      background: rgba(2,6,23,0.65);
+    }
+    .dialog-header {
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 0.75rem;
     }
-    .modal h2 { margin: 0; font-size: 1.25rem; }
+    .dialog-header h2 { margin: 0; font-size: 1.25rem; }
     .close-btn {
       background: transparent; border: none; color: #94a3b8; cursor: pointer;
       font-size: 1.1rem; line-height: 1; padding: 0.25rem 0.5rem; border-radius: 8px;
     }
     .close-btn:hover { color: #e2e8f0; background: #0b1020; }
-    .modal .content { line-height: 1.6; }
-    .modal .address { margin-top: 0.5rem; font-weight: 700; color: #86efac; }
-    .modal footer { margin-top: 1rem; text-align: right; }
-
-    /* class that shows the modal */
-    .show { display: flex; }
+    .address { margin-top: 0.5rem; font-weight: 700; color: #86efac; }
   </style>
 </head>
 <body>
@@ -107,22 +102,20 @@ From roaring twenties to icy snow?
     <footer>Attempts: <span id="attempts">0</span></footer>
   </main>
 
-  <!-- === Modal (pop-up) === -->
-  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal" role="document">
-      <header>
-        <h2 id="modalTitle">Destination Unlocked</h2>
-        <button class="close-btn" id="modalCloseBtn" aria-label="Close pop-up">✕</button>
-      </header>
-      <div class="content">
-        ✅ Correct! Here’s the address:
-        <div id="modalAddress" class="address">43 Nannatee Way, Wanneroo</div>
-      </div>
-      <footer>
-        <button class="close-btn" id="modalCloseBtn2">Close</button>
-      </footer>
+  <!-- === Native modal dialog === -->
+  <dialog id="resultDialog" aria-labelledby="dialogTitle">
+    <div class="dialog-header">
+      <h2 id="dialogTitle">Destination Unlocked</h2>
+      <button class="close-btn" id="dialogCloseBtn" aria-label="Close pop-up">✕</button>
     </div>
-  </div>
+    <div>
+      ✅ Correct! Here’s the address:
+      <div id="dialogAddress" class="address">43 Nannatee Way, Wanneroo</div>
+    </div>
+    <div style="text-align:right; margin-top:1rem;">
+      <button class="close-btn" id="dialogCloseBtn2">Close</button>
+    </div>
+  </dialog>
 
   <!-- Place script at end so DOM is ready -->
   <script>
@@ -141,8 +134,6 @@ From roaring twenties to icy snow?
       "Hint #3: Shares a name with a Renaissance painter."
     ];
     const HINT_AFTER_ATTEMPTS = 3;
-
-    // ✅ Updated address
     const ADDRESS_TEXT = "43 Nannatee Way, Wanneroo";
 
     // === Elements ===
@@ -152,15 +143,14 @@ From roaring twenties to icy snow?
     const hintBox     = document.getElementById('hint');
     const attemptsEl  = document.getElementById('attempts');
 
-    const modalBackdrop = document.getElementById('modalBackdrop');
-    const modalAddress  = document.getElementById('modalAddress');
-    const modalCloseBtn = document.getElementById('modalCloseBtn');
-    const modalCloseBtn2= document.getElementById('modalCloseBtn2');
+    const dialog       = document.getElementById('resultDialog');
+    const dialogClose1 = document.getElementById('dialogCloseBtn');
+    const dialogClose2 = document.getElementById('dialogCloseBtn2');
+    const dialogAddr   = document.getElementById('dialogAddress');
 
     let attempts = 0;
-    let lastFocus = null;
 
-    // Robust normalization: lower-case, trim, collapse spaces, remove punctuation
+    // Robust normalization
     function normalize(str) {
       return (str || '')
         .toLowerCase()
@@ -169,32 +159,23 @@ From roaring twenties to icy snow?
         .replace(/[^\p{L}\p{N}\s]/gu, ''); // remove punctuation safely
     }
 
-    function openModal(addressText) {
-      modalAddress.textContent = addressText;
-      modalBackdrop.classList.add('show');
-      lastFocus = document.activeElement;
-      modalCloseBtn.focus();
-
-      modalBackdrop.addEventListener('click', backdropHandler);
-      document.addEventListener('keydown', escHandler);
+    function openDialog(addressText) {
+      dialogAddr.textContent = addressText;
+      // Use native dialog API
+      if (typeof dialog.showModal === 'function') {
+        dialog.showModal();
+      } else {
+        // Fallback for very old browsers: simple alert
+        alert(addressText);
+      }
     }
 
-    function closeModal() {
-      modalBackdrop.classList.remove('show');
-      modalBackdrop.removeEventListener('click', backdropHandler);
-      document.removeEventListener('keydown', escHandler);
-      if (lastFocus) lastFocus.focus();
+    function closeDialog() {
+      if (dialog.open) dialog.close();
     }
 
-    function backdropHandler(e) {
-      if (e.target === modalBackdrop) closeModal();
-    }
-    function escHandler(e) {
-      if (e.key === 'Escape') closeModal();
-    }
-
-    modalCloseBtn.addEventListener('click', closeModal);
-    modalCloseBtn2.addEventListener('click', closeModal);
+    dialogClose1.addEventListener('click', closeDialog);
+    dialogClose2.addEventListener('click', closeDialog);
 
     function checkAnswer() {
       const user = normalize(answerInput.value);
@@ -206,7 +187,7 @@ From roaring twenties to icy snow?
       if (ok) {
         feedback.textContent = "Nice! That’s correct.";
         feedback.className = "msg ok";
-        openModal(ADDRESS_TEXT);
+        openDialog(ADDRESS_TEXT);
         submitBtn.disabled = true;
         answerInput.disabled = true;
         hintBox.style.display = "none";
@@ -226,6 +207,11 @@ From roaring twenties to icy snow?
       if (e.key === 'Enter') checkAnswer();
     });
     submitBtn.addEventListener('click', checkAnswer);
+
+    // Optional: Close dialog on Esc (native dialog already does this)
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDialog();
+    });
   </script>
 </body>
 </html>
